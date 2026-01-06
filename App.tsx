@@ -1,5 +1,5 @@
 
-import { Wallet, Loader2, RefreshCw, CloudUpload, CloudOff, Cloud, Settings } from 'lucide-react';
+import { Wallet, Loader2, RefreshCw, CloudUpload, CloudOff, Cloud, Settings, AlertCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { FixedExpenses } from './components/FixedExpenses.tsx';
 import { PaymentRegister } from './components/PaymentRegister.tsx';
@@ -150,7 +150,7 @@ function App() {
             <div className="bg-slate-900 p-2 rounded-xl shadow-lg"><Wallet className="h-6 w-6 text-white" /></div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-black text-slate-800 tracking-tighter uppercase leading-none">CONTROL JM</h1>
-              <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1">Estatus Maestro Activo</p>
+              <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1">Sincronización {cloudStatus}</p>
             </div>
           </div>
 
@@ -167,18 +167,25 @@ function App() {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
-            <div className={`p-1.5 rounded-lg flex items-center gap-2 ${cloudStatus === 'connected' ? 'bg-emerald-50 text-emerald-600' : cloudStatus === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400'}`}>
-               {cloudStatus === 'connected' ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
-               <span className="text-[8px] font-black uppercase hidden lg:block">{cloudStatus}</span>
-            </div>
-            
-            <button 
-                onClick={handleManualSync} 
-                disabled={isManualSyncing || !supabaseService.isConfigured()} 
-                className={`p-2.5 rounded-xl transition-all border ${isManualSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border-transparent'} ${!supabaseService.isConfigured() ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
-            >
-              <CloudUpload className={`w-5 h-5 ${isManualSyncing ? 'animate-bounce' : ''}`} />
-            </button>
+            {!supabaseService.isConfigured() ? (
+               <button onClick={() => setIsConfigOpen(true)} className="flex items-center gap-2 bg-rose-50 text-rose-600 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border border-rose-100">
+                  <AlertCircle className="w-3.5 h-3.5" /> Configurar Nube
+               </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                 <div className={`p-1.5 rounded-lg flex items-center gap-2 ${cloudStatus === 'connected' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                    {cloudStatus === 'connected' ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
+                 </div>
+                 
+                 <button 
+                     onClick={handleManualSync} 
+                     disabled={isManualSyncing} 
+                     className={`p-2.5 rounded-xl transition-all border ${isManualSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border-slate-100'}`}
+                 >
+                   <CloudUpload className={`w-5 h-5 ${isManualSyncing ? 'animate-bounce' : ''}`} />
+                 </button>
+              </div>
+            )}
 
             <button 
                 onClick={() => setIsConfigOpen(true)} 
@@ -200,13 +207,14 @@ function App() {
         onSave={() => {
           setCloudStatus('connected');
           refreshData();
+          handleManualSync();
         }} 
       />
 
       {isLive && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 z-[100] animate-bounce">
           <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Sincronización en Vivo</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Cambios detectados en la nube</span>
         </div>
       )}
     </div>
