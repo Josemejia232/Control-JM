@@ -1,5 +1,5 @@
 
-import { Wallet, Loader2, RefreshCw, CloudUpload } from 'lucide-react';
+import { Wallet, Loader2, RefreshCw, CloudUpload, CloudOff, Cloud, Settings } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { FixedExpenses } from './components/FixedExpenses.tsx';
 import { PaymentRegister } from './components/PaymentRegister.tsx';
@@ -8,11 +8,11 @@ import { IncomeManager } from './components/IncomeManager.tsx';
 import { AIAdvisor } from './components/AIAdvisor.tsx';
 import { FinancialStrategy } from './components/FinancialStrategy.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
+import { ConfigModal } from './components/ConfigModal.tsx';
 import { Expense, Payment, Goal, Income, Tab, BankAccount, User } from './types.ts';
 import { db } from './services/db.ts';
 import { supabaseService } from './services/supabaseService.ts';
 
-// Usuario Maestro para acceso directo
 const DEFAULT_USER: User = {
   id: 'master-user-id',
   username: 'admin',
@@ -26,6 +26,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'connected' | 'offline' | 'error'>('offline');
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   
   const currentUser = DEFAULT_USER;
 
@@ -56,14 +58,18 @@ function App() {
   };
 
   const handleManualSync = async () => {
+    if (isManualSyncing) return;
     setIsManualSyncing(true);
     try {
       const success = await db.manualSync(currentUser.id);
       if (success) {
         await refreshData();
+        setCloudStatus('connected');
+      } else {
+        setCloudStatus('error');
       }
     } catch (e: any) {
-      alert("Error de Sincronización con Supabase: " + e.message);
+      setCloudStatus('error');
     } finally {
       setIsManualSyncing(false);
     }
@@ -73,12 +79,15 @@ function App() {
     const init = async () => {
       setIsLoading(true);
       await refreshData();
-      try {
-        if (supabaseService.isConfigured()) {
-          await db.syncFromCloud(currentUser.id);
+      if (supabaseService.isConfigured()) {
+        const success = await db.syncFromCloud(currentUser.id);
+        if (success) {
           await refreshData();
+          setCloudStatus('connected');
+        } else {
+          setCloudStatus('error');
         }
-      } catch (e) {}
+      }
       setIsLoading(false);
     };
     init();
@@ -158,13 +167,24 @@ function App() {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
+            <div className={`p-1.5 rounded-lg flex items-center gap-2 ${cloudStatus === 'connected' ? 'bg-emerald-50 text-emerald-600' : cloudStatus === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400'}`}>
+               {cloudStatus === 'connected' ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
+               <span className="text-[8px] font-black uppercase hidden lg:block">{cloudStatus}</span>
+            </div>
+            
             <button 
                 onClick={handleManualSync} 
                 disabled={isManualSyncing || !supabaseService.isConfigured()} 
                 className={`p-2.5 rounded-xl transition-all border ${isManualSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border-transparent'} ${!supabaseService.isConfigured() ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
-                title={supabaseService.isConfigured() ? "Sincronizar con Supabase" : "Supabase no configurado"}
             >
               <CloudUpload className={`w-5 h-5 ${isManualSyncing ? 'animate-bounce' : ''}`} />
+            </button>
+
+            <button 
+                onClick={() => setIsConfigOpen(true)} 
+                className="p-2.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all border border-transparent"
+            >
+              <Settings className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -173,6 +193,15 @@ function App() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full animate-fade-in">
         {renderContent()}
       </main>
+
+      <ConfigModal 
+        isOpen={isConfigOpen} 
+        onClose={() => setIsConfigOpen(false)} 
+        onSave={() => {
+          setCloudStatus('connected');
+          refreshData();
+        }} 
+      />
 
       {isLive && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 z-[100] animate-bounce">
