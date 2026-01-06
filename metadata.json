@@ -1,0 +1,11 @@
+
+{
+  "name": "Control JM",
+  "short_name": "ControlJM",
+  "description": "Sistema de gestión financiera maestro con sincronización en tiempo real y asesoría IA.",
+  "theme_color": "#0f172a",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "orientation": "portrait",
+  "requestFramePermissions": []
+}
