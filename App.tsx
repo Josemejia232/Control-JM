@@ -1,16 +1,16 @@
 
 import { Wallet, Loader2, RefreshCw, CloudUpload } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { FixedExpenses } from './components/FixedExpenses';
-import { PaymentRegister } from './components/PaymentRegister';
-import { ProgressGoals } from './components/ProgressGoals';
-import { IncomeManager } from './components/IncomeManager';
-import { AIAdvisor } from './components/AIAdvisor';
-import { FinancialStrategy } from './components/FinancialStrategy';
-import { Dashboard } from './components/Dashboard';
-import { Expense, Payment, Goal, Income, Tab, BankAccount, User } from './types';
-import { db } from './services/db';
-import { supabaseService } from './services/supabaseService';
+import { FixedExpenses } from './components/FixedExpenses.tsx';
+import { PaymentRegister } from './components/PaymentRegister.tsx';
+import { ProgressGoals } from './components/ProgressGoals.tsx';
+import { IncomeManager } from './components/IncomeManager.tsx';
+import { AIAdvisor } from './components/AIAdvisor.tsx';
+import { FinancialStrategy } from './components/FinancialStrategy.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
+import { Expense, Payment, Goal, Income, Tab, BankAccount, User } from './types.ts';
+import { db } from './services/db.ts';
+import { supabaseService } from './services/supabaseService.ts';
 
 // Usuario Maestro para acceso directo
 const DEFAULT_USER: User = {
@@ -74,19 +74,24 @@ function App() {
       setIsLoading(true);
       await refreshData();
       try {
-        await db.syncFromCloud(currentUser.id);
-        await refreshData();
+        if (supabaseService.isConfigured()) {
+          await db.syncFromCloud(currentUser.id);
+          await refreshData();
+        }
       } catch (e) {}
       setIsLoading(false);
     };
     init();
 
-    const unsubscribe = supabaseService.subscribeToChanges(currentUser.id, async () => {
-      setIsLive(true);
-      await db.syncFromCloud(currentUser.id);
-      await refreshData();
-      setTimeout(() => setIsLive(false), 2000);
-    });
+    let unsubscribe: (() => void) | undefined;
+    if (supabaseService.isConfigured()) {
+      unsubscribe = supabaseService.subscribeToChanges(currentUser.id, async () => {
+        setIsLive(true);
+        await db.syncFromCloud(currentUser.id);
+        await refreshData();
+        setTimeout(() => setIsLive(false), 2000);
+      });
+    }
 
     return () => unsubscribe?.();
   }, []);
@@ -155,9 +160,9 @@ function App() {
           <div className="flex items-center gap-2 shrink-0">
             <button 
                 onClick={handleManualSync} 
-                disabled={isManualSyncing} 
-                className={`p-2.5 rounded-xl transition-all border ${isManualSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border-transparent'}`}
-                title="Sincronizar con Supabase"
+                disabled={isManualSyncing || !supabaseService.isConfigured()} 
+                className={`p-2.5 rounded-xl transition-all border ${isManualSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border-transparent'} ${!supabaseService.isConfigured() ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                title={supabaseService.isConfigured() ? "Sincronizar con Supabase" : "Supabase no configurado"}
             >
               <CloudUpload className={`w-5 h-5 ${isManualSyncing ? 'animate-bounce' : ''}`} />
             </button>
